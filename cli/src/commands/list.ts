@@ -3,42 +3,42 @@ import chalk from "chalk";
 import { getAllComponents } from "../utils";
 
 export async function list(): Promise<void> {
-  const spinner = ora("Fetching available components...").start();
+  const spinner = ora("Fetching available directories...").start();
 
   try {
-    const components = await getAllComponents();
+    const directories = await getAllComponents();
 
-    if (components.length === 0) {
-      spinner.info("No components found.");
+    if (directories.length === 0) {
+      spinner.info("No directories found.");
       return;
     }
 
-    spinner.succeed(`Found ${components.length} components`);
+    spinner.succeed(`Found ${directories.length} directories`);
 
-    console.log("\nAvailable components:");
-    components.forEach((component) => {
-      console.log(
-        `  ${chalk.cyan(component)} ${chalk.gray(
-          `(installs as dp-${component})`
-        )}`
-      );
+    console.log("\nAvailable directories:");
+    directories.forEach((dir) => {
+      console.log(`  ${chalk.cyan(dir.path)}`);
     });
 
     console.log(
       `\nRun ${chalk.cyan(
-        "npx deepdanci add <component>"
+        "npx deepdanci add <component-path>"
       )} to add a component to your project.`
     );
 
+    console.log(`\nExamples:`);
     console.log(
-      `${chalk.blue(
-        "Note:"
-      )} All components will be installed with a ${chalk.cyan(
-        "dp-"
-      )} prefix in your file system.`
+      `  ${chalk.cyan(
+        "npx deepdanci add button"
+      )} - Add button to components directory`
+    );
+    console.log(
+      `  ${chalk.cyan(
+        "npx deepdanci add lib/utils"
+      )} - Add utils to lib directory`
     );
   } catch (error) {
-    spinner.fail(`Failed to list components: ${(error as Error).message}`);
+    spinner.fail(`Failed to list directories: ${(error as Error).message}`);
     process.exit(1);
   }
 }

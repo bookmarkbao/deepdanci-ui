@@ -9,7 +9,8 @@ import {
   getComponentFiles,
   validateComponent,
   downloadComponentFromGitHub,
-  getComponentsDir,
+  parseComponentPath,
+  getFullComponentPath,
 } from "../utils";
 
 const execAsync = promisify(exec);
@@ -20,90 +21,93 @@ export interface AddOptions {
 }
 
 export async function add(
-  componentName: string,
+  componentPath: string,
   options: AddOptions
 ): Promise<void> {
   const spinner = ora("Adding component...").start();
 
   try {
-    // 1. Validate component exists
-    let isValid = await validateComponent(componentName);
+    // 1. 解析组件路径
+    const { baseDir, componentName } = parseComponentPath(componentPath);
 
-    // 如果本地找不到组件，尝试从GitHub下载
-    if (!isValid) {
+    console.log(`Adding component from ${baseDir}/${componentName}`);
+
+    // 2. 检查组件是否存在
+    let isValid = await validateComponent(componentPath);
+    let sourcePath: string;
+    let componentFiles: string[];
+
+    if (isValid) {
+      // 如果组件存在，获取组件路径
+      sourcePath = await getComponentDir(componentPath);
+      componentFiles = await getComponentFiles(sourcePath);
+
+      if (componentFiles.length === 0) {
+        spinner.fail(`Component ${chalk.cyan(componentPath)} has no files.`);
+        process.exit(1);
+      }
+    } else {
+      // 尝试从 GitHub 下载
       spinner.text = `Component not found locally. Trying to download from GitHub...`;
 
       try {
-        // 格式化组件名称
-        const normalizedName = componentName.toLowerCase();
-        const prefixedName = normalizedName.startsWith("dp-")
-          ? normalizedName
-          : `dp-${normalizedName}`;
+        // 下载组件
+        sourcePath = await downloadComponentFromGitHub(componentPath);
+        componentFiles = await getComponentFiles(sourcePath);
 
-        // 尝试从GitHub下载组件
-        const downloadedComponentPath = await downloadComponentFromGitHub(
-          prefixedName
-        );
-
-        // 复制到本地components目录
-        const componentsDir = getComponentsDir();
-        const targetComponentDir = path.join(componentsDir, prefixedName);
-        await fs.ensureDir(path.dirname(targetComponentDir));
-        await fs.copy(downloadedComponentPath, targetComponentDir);
-
-        // 再次检查组件是否有效
-        isValid = await validateComponent(componentName);
+        if (componentFiles.length === 0) {
+          spinner.fail(
+            `Downloaded component ${chalk.cyan(componentPath)} has no files.`
+          );
+          process.exit(1);
+        }
       } catch (error) {
-        // 下载失败，继续使用原来的错误流程
-        console.log(
-          `Download failed: ${
+        spinner.fail(
+          `Failed to download component: ${
             error instanceof Error ? error.message : String(error)
           }`
         );
+        process.exit(1);
       }
     }
 
-    // 如果组件仍然无效，则退出
-    if (!isValid) {
-      spinner.fail(`Component ${chalk.cyan(componentName)} not found`);
-      process.exit(1);
-    }
+    // 3. 确定目标目录路径
+    // 如果没有指定输出目录，则使用源组件的基本目录
+    const targetBaseDir = options.output || "components";
+    const targetDir = path.join(process.cwd(), targetBaseDir);
 
-    // 格式化组件名称
-    const formattedName = formatComponentName(componentName);
+    // 确保目标基本目录存在
+    await fs.ensureDir(targetDir);
 
-    // 2. Get component files
-    const componentDir = await getComponentDir(componentName);
-    const files = await getComponentFiles(componentDir);
+    // 目标组件目录
+    const targetComponentDir = path.join(targetDir, componentName);
 
-    // 3. Create output directory if it doesn't exist
-    const outputDir = path.resolve(process.cwd(), options.output);
-    const componentOutputDir = path.join(outputDir, formattedName.kebabCase);
-    await fs.ensureDir(componentOutputDir);
+    // 确保目标组件目录存在
+    await fs.ensureDir(targetComponentDir);
 
-    // 4. Copy files
-    for (const file of files) {
-      const srcPath = path.join(componentDir, file);
-      const destPath = path.join(componentOutputDir, file);
+    // 4. 复制文件
+    for (const file of componentFiles) {
+      const srcFilePath = path.join(sourcePath, file);
+      const destFilePath = path.join(targetComponentDir, file);
 
-      // Create subdirectories if needed
-      await fs.ensureDir(path.dirname(destPath));
+      // 确保目标文件的父目录存在
+      await fs.ensureDir(path.dirname(destFilePath));
 
-      // Copy the file and ensure it's UTF-8 encoded
-      let content = await fs.readFile(srcPath, "utf8");
+      // 读取源文件内容
+      let content = await fs.readFile(srcFilePath, "utf8");
 
-      // Fix relative imports from utils
+      // 处理相对导入
       if (content.includes("../utils")) {
         content = content.replace("../utils", "../lib/utils");
 
-        // Ensure utils directory exists
-        const utilsDir = path.join(outputDir, "lib");
-        await fs.ensureDir(utilsDir);
+        // 确保工具目录存在
+        const libDir = path.join(process.cwd(), "lib");
+        await fs.ensureDir(libDir);
 
-        // Copy utils file if it doesn't exist
-        const utilsDestPath = path.join(utilsDir, "utils.ts");
+        // 如果工具文件不存在，则复制
+        const utilsDestPath = path.join(libDir, "utils.ts");
         if (!(await fs.pathExists(utilsDestPath))) {
-          const utilsSrcPath = path.join(componentDir, "..", "utils.ts");
+          const utilsSrcPath = path.join(sourcePath, "..", "utils.ts");
           if (await fs.pathExists(utilsSrcPath)) {
             let utilsContent = await fs.readFile(utilsSrcPath, "utf8");
             await fs.writeFile(utilsDestPath, utilsContent);
@@ -112,21 +116,41 @@ export async function add(
         }
       }
 
-      // Write the file with UTF-8 encoding
-      await fs.writeFile(destPath, content, "utf8");
+      // 写入目标文件
+      await fs.writeFile(destFilePath, content, "utf8");
     }
 
+    // 5. 如果是从 GitHub 下载的，清理临时目录
+    if (!isValid && sourcePath) {
+      try {
+        await fs.remove(path.dirname(path.dirname(sourcePath)));
+      } catch (error) {
+        console.log(
+          `Warning: Failed to clean up temp directory: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      }
+    }
+
+    // 6. 获取组件在导入时的显示名称
+    const displayName = getDisplayName(componentName);
+
+    // 7. 显示成功消息
     spinner.succeed(
-      `Added ${chalk.cyan(formattedName.pascal)} to ${chalk.cyan(
-        options.output
+      `Added ${chalk.cyan(displayName)} to ${chalk.cyan(
+        path.relative(process.cwd(), targetComponentDir)
       )}`
     );
+
+    // 8. 显示导入信息
     console.log(`\n${chalk.green("Import and use the component:")}`);
-    console.log(
-      `import { ${formattedName.pascal} } from "${path
-        .relative("./src", componentOutputDir)
-        .replace(/\\/g, "/")}";`
-    );
+
+    // 计算导入路径
+    const importPath = path
+      .relative("./src", targetComponentDir)
+      .replace(/\\/g, "/");
+    console.log(`import { ${displayName} } from "${importPath}";`);
   } catch (error) {
     spinner.fail(`Failed to add component: ${(error as Error).message}`);
     process.exit(1);
@@ -134,29 +158,18 @@ export async function add(
 }
 
 /**
- * 格式化组件名称为不同的命名格式
+ * 获取组件显示名称
  */
-function formatComponentName(name: string) {
-  // 将名称转换为小写并去除特殊字符
-  const normalized = name.toLowerCase().replace(/[^a-z0-9-]/g, "");
-
-  // 提取基本名称（不带前缀）
-  let baseName = normalized;
-  if (normalized.startsWith("dp-")) {
-    baseName = normalized.substring(3); // 移除已有的dp-前缀
+function getDisplayName(name: string): string {
+  // 移除可能存在的前缀
+  let baseName = name;
+  if (baseName.startsWith("dp-")) {
+    baseName = baseName.substring(3);
   }
 
-  // 转换为 kebab-case（用于目录）并添加 dp- 前缀
-  const kebabCase = `dp-${baseName}`;
-
-  // 转换为 PascalCase（用于组件导入）
-  const pascal = baseName
+  // 转换为 PascalCase
+  return baseName
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join("");
-
-  return {
-    kebabCase,
-    pascal,
-  };
 }

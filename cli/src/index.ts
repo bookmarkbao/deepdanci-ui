@@ -21,9 +21,15 @@ program
 program
   .command("add")
   .description("Add a component to your project")
-  .argument("<component>", "Name of the component to add")
+  .argument(
+    "<component-path>",
+    "Path of the component to add (e.g. button, ui-dp/button)"
+  )
   .option("-y, --yes", "Skip confirmation prompt")
-  .option("-o, --output <directory>", "Output directory", "./components")
+  .option(
+    "-o, --output <directory>",
+    "Output directory (default: same as source)"
+  )
   .action(add);
 
 program
