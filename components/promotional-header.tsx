@@ -1,32 +1,24 @@
 "use client"
-import React, { useState, useEffect } from "react"
-import { ExternalLink } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
+import { useState, useEffect } from "react"
+import { X, ExternalLink } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import Image from "next/image"
+import { motion, AnimatePresence } from "framer-motion"
+import { supabaseDev } from "@/lib/supabase"
 
-// 这个注释掉，需要在使用者那边提供 supabase 实例
-// import { supabaseDev } from "@/lib/supabase"
-
-// 推广头部的类型定义
 type Announcement = {
     id: string
     title: string
     content: string
-    icon: string | null
+    icon: string | null  // 这里存储的直接是emoji  
     link_url: string | null
     button_text: string | null
     image_url: string | null
     priority: number
 }
 
-/**
- * 推广头部组件
- * 用于展示来自 Supabase 的公告信息
- * 
- * @param supabaseClient Supabase 客户端实例
- * @returns 组件
- */
-export function PromotionalHeader({ supabaseClient }: { supabaseClient?: any }) {
+export default function PromotionalHeader() {
     const [isVisible, setIsVisible] = useState(true)
     const [announcements, setAnnouncements] = useState<Announcement[]>([])
     const [currentIndex, setCurrentIndex] = useState(0)
@@ -34,10 +26,7 @@ export function PromotionalHeader({ supabaseClient }: { supabaseClient?: any }) 
 
     useEffect(() => {
         const fetchAnnouncements = async () => {
-            // 如果没有提供 supabaseClient，则返回
-            if (!supabaseClient) return;
-
-            const { data, error } = await supabaseClient
+            const { data, error } = await supabaseDev
                 .from('deep_announcements')
                 .select('*')
                 .eq('active', true)
@@ -49,7 +38,7 @@ export function PromotionalHeader({ supabaseClient }: { supabaseClient?: any }) 
         }
 
         fetchAnnouncements()
-    }, [supabaseClient])
+    }, [])
 
     // 如果有多条公告，设置轮播  
     useEffect(() => {
@@ -125,26 +114,19 @@ export function PromotionalHeader({ supabaseClient }: { supabaseClient?: any }) 
                 {/* Right side with CTA */}
                 <div className="flex items-center space-x-2 flex-shrink-0 ml-4">
                     {currentAnnouncement.button_text && (
-                        <>
-                            <button
+                        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                            <Button
                                 className="inline-flex items-center rounded-md bg-[#FF6600]/80 px-3.5 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-[#FF5500] transition-colors"
                                 onClick={handleButtonClick}
                             >
                                 {currentAnnouncement.button_text}
-                            </button>
+                            </Button>
 
-                            {isModalOpen && currentAnnouncement.image_url && (
-                                <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-                                    <div className="bg-white rounded-lg max-w-md w-full p-6 relative">
-                                        <button
-                                            className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
-                                            onClick={() => setIsModalOpen(false)}
-                                        >
-                                            <span className="sr-only">关闭</span>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                                        </button>
+                            {currentAnnouncement.image_url && (
+                                <DialogContent className="sm:max-w-md bg-white p-0 overflow-hidden">
+                                    <div className="flex flex-col items-center justify-center p-6">
                                         <h3 className="text-lg font-semibold text-gray-900 mb-4">{currentAnnouncement.title}</h3>
-                                        <div className="relative w-full h-64 bg-gradient-to-br p-4 rounded-lg shadow-inner mb-4">
+                                        <div className="relative w-72 h-72 bg-gradient-to-br p-4 rounded-lg shadow-inner">
                                             <Image
                                                 src={currentAnnouncement.image_url}
                                                 alt={currentAnnouncement.title}
@@ -152,14 +134,23 @@ export function PromotionalHeader({ supabaseClient }: { supabaseClient?: any }) 
                                                 className="object-contain p-2"
                                             />
                                         </div>
-                                        <p className="text-center text-gray-600">
+                                        <p className="mt-5 text-center text-gray-600">
                                             {currentAnnouncement.content}
                                         </p>
                                     </div>
-                                </div>
+                                </DialogContent>
                             )}
-                        </>
+                        </Dialog>
                     )}
+                    {/* <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-gray-400 hover:bg-orange-100 hover:text-gray-600 rounded-full"
+                        onClick={() => setIsVisible(false)}
+                    >
+                        <X className="h-4 w-4" />
+                        <span className="sr-only">关闭</span>
+                    </Button> */}
                 </div>
             </div>
 
@@ -185,6 +176,3 @@ export function PromotionalHeader({ supabaseClient }: { supabaseClient?: any }) 
         </div>
     )
 }
-
-// 导出默认版本
-export default PromotionalHeader;
