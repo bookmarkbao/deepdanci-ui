@@ -3,20 +3,14 @@
  * 所以保持简单并只依赖必要的包
  */
 
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
 /**
- * Merges class names with tailwind-merge
- * @param inputs class name values to merge
- * @returns merged class name string
+ * 合并Tailwind CSS类名
+ * @param inputs 需要合并的类名
+ * @returns 合并后的类名字符串
  */
-export function cn(...inputs: any[]): string {
-  // 如果用户已经安装了 clsx 和 tailwind-merge，使用它们
-  try {
-    // 动态导入，避免直接依赖
-    const clsx = require("clsx");
-    const { twMerge } = require("tailwind-merge");
-    return twMerge(clsx(inputs));
-  } catch (e) {
-    // 简化的合并逻辑作为后备
-    return inputs.filter(Boolean).join(" ").trim().replace(/\s+/g, " ");
-  }
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
 }
