@@ -11,7 +11,8 @@
     "lint": "eslint \"src/**/*.ts\"",
     "clean": "rm -rf dist",
     "prepare": "npm run build",
-    "prepublishOnly": "npm run build && node scripts/copy-components.js"
+    "prepublishOnly": "npm run build && node scripts/copy-components.js",
+    "link": "npm link"
   },
   "files": [
     "dist",

@@ -36,21 +36,35 @@ export async function init(): Promise<void> {
     }
 
     // Create directories
-    const componentsDir = path.join(process.cwd(), "components", "ui-dp");
-    await fs.ensureDir(componentsDir);
+    const directories = [
+      path.join(process.cwd(), "components"),
+      path.join(process.cwd(), "hooks"),
+      path.join(process.cwd(), "lib"),
+    ];
+
+    // Create each directory
+    for (const dir of directories) {
+      await fs.ensureDir(dir);
+      spinner.text = `Creating directory: ${dir}`;
+    }
 
     spinner.succeed("DeepDanci UI initialized successfully");
     console.log(`\n${chalk.green("Next steps:")}`);
     console.log(
       `1. ${chalk.cyan(
-        "Import globals.css"
-      )} - Add to your main layout or entry file`
+        "npx deepdanci add promotional-header"
+      )} - Add the promotional header component`
     );
     console.log(
-      `2. ${chalk.cyan("npx deepdanci add button")} - Add a button component`
+      `2. ${chalk.cyan(
+        "npx deepdanci add terms-of-service"
+      )} - Add terms of service component`
     );
     console.log(
-      `3. ${chalk.cyan("npx deepdanci list")} - View all available components`
+      `3. ${chalk.cyan("npx deepdanci add hooks/useTest")} - Add a test hook`
+    );
+    console.log(
+      `4. ${chalk.cyan("npx deepdanci list")} - View all available components`
     );
   } catch (error) {
     spinner.fail(`Initialization failed: ${(error as Error).message}`);

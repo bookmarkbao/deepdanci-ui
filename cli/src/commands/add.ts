@@ -1,11 +1,55 @@
 import fs from "fs-extra";
 import path from "path";
 import ora from "ora";
+import execa from "execa";
 import { isDirectory, normalizeTargetPath, pathExists, logger } from "../utils";
+import os from "os";
 
 interface AddOptions {
   yes?: boolean;
   output?: string;
+}
+
+// GitHub repository URL
+const REPO_URL = "https://github.com/bookmarkbao/deepdanci-ui.git";
+
+/**
+ * Try different path variations to find the component
+ */
+async function findComponent(
+  baseDir: string,
+  normalizedPath: string
+): Promise<string | null> {
+  // List of possible path variations to try
+  const pathVariations = [
+    normalizedPath, // Original path
+    `${normalizedPath}.tsx`, // With .tsx extension
+    `${normalizedPath}.ts`, // With .ts extension
+    `${normalizedPath}/index.tsx`, // Directory with index.tsx
+    `${normalizedPath}/index.ts`, // Directory with index.ts
+  ];
+
+  // For components paths, also try without the components/ prefix
+  if (normalizedPath.startsWith("components/")) {
+    const withoutPrefix = normalizedPath.replace("components/", "");
+    pathVariations.push(
+      withoutPrefix, // Without prefix
+      `${withoutPrefix}.tsx`, // Without prefix with .tsx extension
+      `${withoutPrefix}.ts`, // Without prefix with .ts extension
+      `${withoutPrefix}/index.tsx`, // Without prefix directory with index.tsx
+      `${withoutPrefix}/index.ts` // Without prefix directory with index.ts
+    );
+  }
+
+  // Try all path variations
+  for (const pathVar of pathVariations) {
+    const fullPath = path.join(baseDir, pathVar);
+    if (await pathExists(fullPath)) {
+      return fullPath;
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -21,68 +65,70 @@ export const add = async (componentPath: string, options: AddOptions) => {
     // Get current working directory (where the user is running the command)
     const cwd = process.cwd();
 
-    // Source paths in the package
-    const packageRoot = path.resolve(__dirname, "..", "..");
-    const sourceRoot = path.resolve(packageRoot, "..");
+    // Create temp directory for cloning
+    const tempDir = path.join(os.tmpdir(), `deepdanci-${Date.now()}`);
+    spinner.text = "Downloading from GitHub repository...";
 
-    // Determine the source path
-    let sourcePath: string;
+    try {
+      // Clone the repository to temp directory (shallow clone to save time)
+      await execa("git", ["clone", "--depth=1", REPO_URL, tempDir]);
 
-    // If in the components folder, we look in the CLI components directory or main components directory
-    if (type === "components") {
-      const cliComponentPath = path.join(
-        packageRoot,
-        "components",
-        normalizedPath.replace("components/", "")
-      );
-      const mainComponentPath = path.join(sourceRoot, normalizedPath);
+      // Try to find the component with various path formats
+      const sourcePath = await findComponent(tempDir, normalizedPath);
 
-      // Check if component exists in CLI components directory first
-      if (await pathExists(cliComponentPath)) {
-        sourcePath = cliComponentPath;
+      // Check if the file or directory exists in the repository
+      if (!sourcePath) {
+        spinner.fail(
+          `${type} "${normalizedPath}" not found in the repository.`
+        );
+        return;
       }
-      // Otherwise check the main components directory
-      else if (await pathExists(mainComponentPath)) {
-        sourcePath = mainComponentPath;
+
+      // Determine the destination path in the user's project
+      let destPath: string;
+
+      // If we found a file with an extension, make sure the destination includes the extension
+      if (sourcePath.endsWith(".tsx") || sourcePath.endsWith(".ts")) {
+        // Extract the extension
+        const ext = path.extname(sourcePath);
+        if (!normalizedPath.endsWith(ext)) {
+          destPath = path.join(cwd, `${normalizedPath}${ext}`);
+        } else {
+          destPath = path.join(cwd, normalizedPath);
+        }
       } else {
-        spinner.fail(`Component "${normalizedPath}" not found.`);
+        destPath = path.join(cwd, normalizedPath);
+      }
+
+      // Check if destination already exists
+      if (await pathExists(destPath)) {
+        spinner.fail(`${normalizedPath} already exists in your project.`);
         return;
       }
-    }
-    // For hooks and lib, look in their respective directories
-    else {
-      sourcePath = path.join(sourceRoot, normalizedPath);
 
-      if (!(await pathExists(sourcePath))) {
-        spinner.fail(`${type} "${normalizedPath}" not found.`);
-        return;
+      // Create destination directory if needed
+      await fs.ensureDir(path.dirname(destPath));
+
+      // Check if source is a directory or a file
+      if (isDirectory(sourcePath)) {
+        // If it's a directory, copy the entire directory
+        await fs.copy(sourcePath, destPath);
+        spinner.succeed(`Added directory: ${normalizedPath}`);
+      } else {
+        // If it's a file, copy the file
+        await fs.copy(sourcePath, destPath);
+        spinner.succeed(`Added file: ${path.basename(destPath)}`);
+      }
+
+      logger.info(
+        `Successfully added ${path.basename(destPath)} to your project.`
+      );
+    } finally {
+      // Clean up: remove the temp directory
+      if (await pathExists(tempDir)) {
+        await fs.remove(tempDir);
       }
     }
-
-    // Determine the destination path
-    const destPath = path.join(cwd, normalizedPath);
-
-    // Check if destination already exists
-    if (await pathExists(destPath)) {
-      spinner.fail(`${normalizedPath} already exists in your project.`);
-      return;
-    }
-
-    // Create destination directory if needed
-    await fs.ensureDir(path.dirname(destPath));
-
-    // Check if source is a directory or a file
-    if (isDirectory(sourcePath)) {
-      // If it's a directory, copy the entire directory
-      await fs.copy(sourcePath, destPath);
-      spinner.succeed(`Added directory: ${normalizedPath}`);
-    } else {
-      // If it's a file, copy the file
-      await fs.copy(sourcePath, destPath);
-      spinner.succeed(`Added file: ${normalizedPath}`);
-    }
-
-    logger.info(`Successfully added ${normalizedPath} to your project.`);
   } catch (error) {
     spinner.fail("Failed to add to your project.");
     if (error instanceof Error) {
