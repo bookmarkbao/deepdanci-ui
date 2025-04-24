@@ -8,8 +8,22 @@
   "scripts": {
     "build:cli": "cd cli && npm run build",
     "dev:cli": "cd cli && npm run dev",
-    "lint": "cd cli && npm run lint"
+    "lint": "cd cli && npm run lint",
+    "prepare": "npm run build:cli",
+    "publish:cli": "cd cli && npm publish --access public"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bookmarkbao/deepdanci-ui.git"
+  },
+  "author": "Bookmark Bao",
+  "license": "MIT",
   "dependencies": {},
-  "devDependencies": {}
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "class-variance-authority": "^0.6.0",
+    "clsx": "^1.2.1",
+    "react": "^18.2.0",
+    "tailwind-merge": "^1.12.0"
+  }
 }

@@ -6,9 +6,59 @@ import { promisify } from "util";
 import { exec } from "child_process";
 
 const execAsync = promisify(exec);
+const globPromise = promisify(glob);
+
+// 获取组件目录路径
+function getComponentsDir(): string {
+  const debugPaths = [];
+
+  // 检查相对于当前工作目录的路径
+  const cwdComponentsDir = path.join(process.cwd(), "components");
+  debugPaths.push(cwdComponentsDir);
+  if (fs.existsSync(cwdComponentsDir)) {
+    console.log(`Found components dir at: ${cwdComponentsDir}`);
+    return cwdComponentsDir;
+  }
+
+  // 检查相对于CLI目录的上级路径
+  const upLevelDir = path.join(process.cwd(), "..", "components");
+  debugPaths.push(upLevelDir);
+  if (fs.existsSync(upLevelDir)) {
+    console.log(`Found components dir at: ${upLevelDir}`);
+    return upLevelDir;
+  }
+
+  // 如果是从安装的包运行
+  const pkgDir = path.join(__dirname, "..", "..", "..", "components");
+  debugPaths.push(pkgDir);
+  if (fs.existsSync(pkgDir)) {
+    console.log(`Found components dir at: ${pkgDir}`);
+    return pkgDir;
+  }
+
+  // 特殊情况：直接使用项目根目录下的components目录
+  const npmGlobalDir = path.resolve(
+    path.join(__dirname, "..", "..", "..", "..", "components")
+  );
+  debugPaths.push(npmGlobalDir);
+  if (fs.existsSync(npmGlobalDir)) {
+    console.log(`Found components dir at: ${npmGlobalDir}`);
+    return npmGlobalDir;
+  }
+
+  console.log(
+    `Couldn't find components directory. Tried: ${debugPaths.join(", ")}`
+  );
+
+  // 如果找不到组件目录，返回默认路径并创建它
+  const defaultDir = path.join(process.cwd(), "components");
+  fs.ensureDirSync(defaultDir);
+  console.log(`Created default components dir at: ${defaultDir}`);
+  return defaultDir;
+}
 
 // Path to components directory
-const COMPONENTS_DIR = path.join(process.cwd(), "../../components");
+const COMPONENTS_DIR = getComponentsDir();
 
 /**
  * Check if a component exists
@@ -18,7 +68,11 @@ export async function validateComponent(
 ): Promise<boolean> {
   const normalizedName = componentName.toLowerCase();
   const componentDir = path.join(COMPONENTS_DIR, normalizedName);
-  return fs.pathExists(componentDir);
+  const exists = await fs.pathExists(componentDir);
+  console.log(
+    `Checking if component ${normalizedName} exists at ${componentDir}: ${exists}`
+  );
+  return exists;
 }
 
 /**
@@ -35,13 +89,25 @@ export async function getComponentDir(componentName: string): Promise<string> {
 export async function getComponentFiles(
   componentDir: string
 ): Promise<string[]> {
-  const files = await glob("**/*", {
-    cwd: componentDir,
-    dot: false,
-    nodir: true,
-    ignore: ["node_modules/**", ".git/**", "README.md", "package.json"],
-  });
-  return files;
+  console.log(`Getting files from ${componentDir}`);
+  try {
+    const files = await globPromise("**/*", {
+      cwd: componentDir,
+      dot: false,
+      nodir: true,
+      ignore: ["node_modules/**", ".git/**", "README.md", "package.json"],
+    });
+
+    console.log(`Found ${files.length} files: ${files.join(", ")}`);
+    return files;
+  } catch (error) {
+    console.error(
+      `Error getting files: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+    return [];
+  }
 }
 
 /**
@@ -49,19 +115,39 @@ export async function getComponentFiles(
  */
 export async function getAllComponents(): Promise<string[]> {
   try {
+    console.log(`Looking for components in: ${COMPONENTS_DIR}`);
+
+    // 检查目录是否存在
+    if (!(await fs.pathExists(COMPONENTS_DIR))) {
+      console.log(`Components directory doesn't exist: ${COMPONENTS_DIR}`);
+      return [];
+    }
+
     const componentDirs = await fs.readdir(COMPONENTS_DIR);
+    console.log(`Found dirs in components: ${componentDirs.join(", ")}`);
 
     const components = [];
     for (const dir of componentDirs) {
-      const stat = await fs.stat(path.join(COMPONENTS_DIR, dir));
+      const fullPath = path.join(COMPONENTS_DIR, dir);
+      const stat = await fs.stat(fullPath);
+      console.log(
+        `Checking ${fullPath}: ${
+          stat.isDirectory() ? "is directory" : "is file"
+        }`
+      );
       if (stat.isDirectory()) {
         components.push(dir);
       }
     }
 
+    console.log(`Final components list: ${components.join(", ")}`);
     return components;
   } catch (error) {
-    console.error("Error getting components:", error);
+    console.error(
+      `Error getting components: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
     return [];
   }
 }
@@ -80,7 +166,7 @@ export async function downloadComponentFromGitHub(
   try {
     // From GitHub download
     await execAsync(
-      `git clone --depth 1 --filter=blob:none --sparse https://github.com/yourusername/deepdanci-ui ${tempDir}`
+      `git clone --depth 1 --filter=blob:none --sparse https://github.com/bookmarkbao/deepdanci-ui ${tempDir}`
     );
 
     // Sparse checkout specific component
@@ -90,8 +176,11 @@ export async function downloadComponentFromGitHub(
     );
 
     return path.join(tempDir, "components", normalizedName);
-  } catch (error) {
+  } catch (error: unknown) {
     await fs.remove(tempDir);
-    throw new Error(`Failed to download component: ${error.message}`);
+    if (error instanceof Error) {
+      throw new Error(`Failed to download component: ${error.message}`);
+    }
+    throw new Error("Failed to download component: Unknown error");
   }
 }

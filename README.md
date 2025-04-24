@@ -1,75 +1,75 @@
 # DeepDanci UI
 
-DeepDanci UI is a collection of reusable UI components built with React and Tailwind CSS, inspired by Shadcn/UI.
+DeepDanci UI 是一个受 Shadcn/UI 启发的 React 和 Tailwind CSS 组件库。它使用复制粘贴的方式，让你可以将组件直接添加到项目中自由定制。
 
-## Features
+## 特性
 
-- Copy-and-paste components into your projects
-- Fully customizable and themeable
-- Built with React and Tailwind CSS
-- TypeScript support
+- 将组件复制到你的项目中而不是作为依赖安装
+- 完全可定制，适合任何设计系统
+- 基于 React 和 Tailwind CSS 构建
+- 完整 TypeScript 支持
 
-## Installation
+## 安装
 
 ```bash
-# Install from npm (once published)
+# 从npm安装全局CLI工具
 npm install -g deepdanci
 
-# Or use it directly with npx
+# 或者直接通过npx使用
 npx deepdanci init
 npx deepdanci add Button
 npx deepdanci add SiteHeader
 npx deepdanci list
 ```
 
-## Local Development and Installation
+## 本地开发和安装
 
-To develop or install the CLI locally:
+要在本地开发或安装 CLI：
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/deepdanci-ui.git
+# 克隆仓库
+git clone https://github.com/bookmarkbao/deepdanci-ui.git
 cd deepdanci-ui
 
-# Install dependencies
+# 安装依赖
 npm install
 
-# Build and install the CLI locally
+# 构建并本地安装CLI
 node install.js
 
-# Or manually:
+# 或手动安装：
 cd cli
 npm install
 npm run build
-npm install -g .  # Install the CLI globally
+npm install -g .  # 全局安装CLI
 ```
 
-## Available Components
+## 可用组件
 
-- Button
-- SiteHeader
-- (more coming soon)
+- Button - 多种样式和尺寸的按钮
+- SiteHeader - 响应式网站头部
+- (更多组件陆续添加中)
 
-## How It Works
+## 工作原理
 
-Unlike conventional component libraries, DeepDanci UI doesn't install components as dependencies. Instead, it copies the component code directly into your project, allowing you to customize and modify it to fit your needs.
+与传统组件库不同，DeepDanci UI 不是将组件作为依赖项安装，而是直接将组件代码复制到你的项目中，让你可以自由修改和定制。
 
-## Customization
+## 定制化
 
-Since the components are copied into your project, you can easily modify them to match your design system. The components use Tailwind CSS for styling, making it easy to customize the look and feel.
+由于组件被复制到你的项目中，你可以轻松地修改它们以适应你的设计系统。组件使用 Tailwind CSS 进行样式设置，使其易于定制外观和感觉。
 
-## Creating New Components
+## 添加新组件
 
-To add a new component to the library:
+要向库中添加新组件：
 
-1. Create a new directory in the `components` folder with the component name
-2. Add the component files (index.tsx, etc.)
-3. Make sure to document the component usage
+1. 在`components`文件夹中创建一个与组件同名的新目录
+2. 添加组件文件(index.tsx 等)
+3. 确保为组件提供使用文档
 
-## Contributing
+## 贡献
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+欢迎贡献！请随时提交 Pull Request。
 
-## License
+## 许可证
 
-MIT License
+MIT 许可证
