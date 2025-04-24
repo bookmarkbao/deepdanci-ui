@@ -2,73 +2,134 @@
 
 DeepDanci UI 是一个受 Shadcn/UI 启发的 React 和 Tailwind CSS 组件库。它使用复制粘贴的方式，让你可以将组件直接添加到项目中自由定制。
 
-## 特性
-
-- 将组件复制到你的项目中而不是作为依赖安装
-- 完全可定制，适合任何设计系统
-- 基于 React 和 Tailwind CSS 构建
-- 完整 TypeScript 支持
-
 ## 安装
 
 ```bash
-# 从npm安装全局CLI工具
+# 全局安装CLI工具
 npm install -g deepdanci
 
 # 或者直接通过npx使用
-npx deepdanci init
-npx deepdanci add Button
-npx deepdanci add SiteHeader
+npx deepdanci list
+npx deepdanci add button
+```
+
+## 使用指南
+
+### 列出可用目录
+
+```bash
 npx deepdanci list
 ```
 
-## 本地开发和安装
+这个命令会列出项目根目录下的主要目录（components、lib、hooks 等），你可以将组件添加到这些目录中。
+
+### 添加组件
+
+```bash
+# 添加组件到components目录
+npx deepdanci add button
+
+# 添加组件到lib目录
+npx deepdanci add lib/utils
+```
+
+组件的安装路径遵循直接对应关系：
+
+- `npx deepdanci add button` 将组件安装到 `components/button` 目录
+- `npx deepdanci add lib/utils` 将组件安装到 `lib/utils` 目录
+
+### 组件的使用
+
+添加组件后，你可以直接在项目中导入并使用：
+
+```jsx
+// 导入Button组件
+import { Button } from "../components/button";
+
+// 在React组件中使用
+function MyComponent() {
+  return (
+    <Button variant='primary' size='lg'>
+      点击我
+    </Button>
+  );
+}
+```
+
+## 工作原理
+
+与传统组件库不同，DeepDanci UI 不是将组件作为依赖项安装，而是直接将组件代码复制到你的项目中，让你可以自由修改和定制。CLI 工具会：
+
+1. 首先检查组件是否已在本地项目中存在
+2. 如果不存在，会尝试从 GitHub 仓库下载该组件
+3. 将组件文件复制到指定的目录中
+4. 处理相关依赖关系
+
+## 本地开发
 
 要在本地开发或安装 CLI：
 
 ```bash
 # 克隆仓库
 git clone https://github.com/bookmarkbao/deepdanci-ui.git
-cd deepdanci-ui
+cd deepdanci-ui/cli
 
 # 安装依赖
 npm install
 
-# 构建并本地安装CLI
-node install.js
-
-# 或手动安装：
-cd cli
-npm install
+# 构建CLI
 npm run build
-npm install -g .  # 全局安装CLI
+
+# 本地链接（用于测试）
+npm link
+
+# 使用本地链接的CLI
+npx deepdanci list
 ```
 
-## 可用组件
+## 目录结构
 
-- Button - 多种样式和尺寸的按钮
-- SiteHeader - 响应式网站头部
-- (更多组件陆续添加中)
+添加组件后，你的项目目录结构将类似于：
 
-## 工作原理
+```
+your-project/
+├── components/
+│   ├── button/
+│   │   └── index.tsx
+│   └── other-component/
+│       └── index.tsx
+├── lib/
+│   └── utils/
+│       └── index.ts
+└── hooks/
+    └── use-something/
+        └── index.ts
+```
 
-与传统组件库不同，DeepDanci UI 不是将组件作为依赖项安装，而是直接将组件代码复制到你的项目中，让你可以自由修改和定制。
+## 示例用法
 
-## 定制化
+```jsx
+// 导入多个组件
+import { Button } from "../components/button";
+import { Card } from "../components/card";
+import { useToggle } from "../hooks/use-toggle";
 
-由于组件被复制到你的项目中，你可以轻松地修改它们以适应你的设计系统。组件使用 Tailwind CSS 进行样式设置，使其易于定制外观和感觉。
+function MyComponent() {
+  const [isOpen, toggle] = useToggle(false);
 
-## 添加新组件
-
-要向库中添加新组件：
-
-1. 在`components`文件夹中创建一个与组件同名的新目录
-2. 添加组件文件(index.tsx 等)
-3. 确保为组件提供使用文档
+  return (
+    <Card>
+      <h2>Hello World</h2>
+      <p>这是一个示例组件</p>
+      <Button onClick={toggle}>{isOpen ? "关闭" : "打开"}</Button>
+    </Card>
+  );
+}
+```
 
 ## 贡献
 
-欢迎贡献！请随时提交 Pull Request。
+欢迎贡献！请随时提交 Pull Request 或 Issues。
 
 ## 许可证
 
