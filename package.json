@@ -1,0 +1,15 @@
+{
+  "name": "deepdanci-ui-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "cli"
+  ],
+  "scripts": {
+    "build:cli": "cd cli && npm run build",
+    "dev:cli": "cd cli && npm run dev",
+    "lint": "cd cli && npm run lint"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
