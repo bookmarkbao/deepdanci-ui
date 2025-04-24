@@ -8,6 +8,8 @@ import {
   getComponentDir,
   getComponentFiles,
   validateComponent,
+  downloadComponentFromGitHub,
+  getComponentsDir,
 } from "../utils";
 
 const execAsync = promisify(exec);
@@ -25,7 +27,43 @@ export async function add(
 
   try {
     // 1. Validate component exists
-    const isValid = await validateComponent(componentName);
+    let isValid = await validateComponent(componentName);
+
+    // 如果本地找不到组件，尝试从GitHub下载
+    if (!isValid) {
+      spinner.text = `Component not found locally. Trying to download from GitHub...`;
+
+      try {
+        // 格式化组件名称
+        const normalizedName = componentName.toLowerCase();
+        const prefixedName = normalizedName.startsWith("dp-")
+          ? normalizedName
+          : `dp-${normalizedName}`;
+
+        // 尝试从GitHub下载组件
+        const downloadedComponentPath = await downloadComponentFromGitHub(
+          prefixedName
+        );
+
+        // 复制到本地components目录
+        const componentsDir = getComponentsDir();
+        const targetComponentDir = path.join(componentsDir, prefixedName);
+        await fs.ensureDir(path.dirname(targetComponentDir));
+        await fs.copy(downloadedComponentPath, targetComponentDir);
+
+        // 再次检查组件是否有效
+        isValid = await validateComponent(componentName);
+      } catch (error) {
+        // 下载失败，继续使用原来的错误流程
+        console.log(
+          `Download failed: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      }
+    }
+
+    // 如果组件仍然无效，则退出
     if (!isValid) {
       spinner.fail(`Component ${chalk.cyan(componentName)} not found`);
       process.exit(1);
@@ -100,20 +138,19 @@ export async function add(
  */
 function formatComponentName(name: string) {
   // 将名称转换为小写并去除特殊字符
-  const normalized = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const normalized = name.toLowerCase().replace(/[^a-z0-9-]/g, "");
 
-  // 转换为 kebab-case（用于目录）并添加 dp- 前缀
-  let kebabCase = normalized.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
-
-  // 如果还没有 dp- 前缀，则添加
-  if (!kebabCase.startsWith("dp-")) {
-    kebabCase = `dp-${kebabCase}`;
+  // 提取基本名称（不带前缀）
+  let baseName = normalized;
+  if (normalized.startsWith("dp-")) {
+    baseName = normalized.substring(3); // 移除已有的dp-前缀
   }
 
+  // 转换为 kebab-case（用于目录）并添加 dp- 前缀
+  const kebabCase = `dp-${baseName}`;
+
   // 转换为 PascalCase（用于组件导入）
-  // 这里不需要在 Pascal 命名中添加 Dp 前缀，因为这样会导致引用不自然
-  const pascal = kebabCase
-    .replace(/^dp-/, "") // 先移除 dp- 前缀
+  const pascal = baseName
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join("");

@@ -23,7 +23,7 @@ program
   .description("Add a component to your project")
   .argument("<component>", "Name of the component to add")
   .option("-y, --yes", "Skip confirmation prompt")
-  .option("-o, --output <directory>", "Output directory", "./src/components")
+  .option("-o, --output <directory>", "Output directory", "./components")
   .action(add);
 
 program

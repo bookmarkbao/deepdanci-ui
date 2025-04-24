@@ -9,7 +9,7 @@ const execAsync = promisify(exec);
 const globPromise = promisify(glob);
 
 // 获取组件目录路径
-function getComponentsDir(): string {
+export function getComponentsDir(): string {
   const debugPaths = [];
 
   // 检查相对于当前工作目录的路径
@@ -36,7 +36,7 @@ function getComponentsDir(): string {
     return pkgDir;
   }
 
-  // 特殊情况：直接使用项目根目录下的components目录
+  // 检查全局包位置下的components目录
   const npmGlobalDir = path.resolve(
     path.join(__dirname, "..", "..", "..", "..", "components")
   );
@@ -44,6 +44,34 @@ function getComponentsDir(): string {
   if (fs.existsSync(npmGlobalDir)) {
     console.log(`Found components dir at: ${npmGlobalDir}`);
     return npmGlobalDir;
+  }
+
+  // 直接检查CLI所在目录下的components
+  const cliDirComponents = path.join(__dirname, "..", "..", "components");
+  debugPaths.push(cliDirComponents);
+  if (fs.existsSync(cliDirComponents)) {
+    console.log(`Found components dir at: ${cliDirComponents}`);
+    return cliDirComponents;
+  }
+
+  // 尝试寻找全局安装的包目录
+  try {
+    // 使用同步版本避免异步问题
+    const { execSync } = require("child_process");
+    const globalNpmRoot = execSync("npm root -g", { encoding: "utf8" }).trim();
+    const globalComponentsDir = path.join(
+      globalNpmRoot,
+      "deepdanci",
+      "components"
+    );
+    debugPaths.push(globalComponentsDir);
+    if (fs.existsSync(globalComponentsDir)) {
+      console.log(`Found components dir at: ${globalComponentsDir}`);
+      return globalComponentsDir;
+    }
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.log(`Error checking global npm directory: ${errorMessage}`);
   }
 
   console.log(
