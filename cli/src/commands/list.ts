@@ -17,13 +17,25 @@ export async function list(): Promise<void> {
 
     console.log("\nAvailable components:");
     components.forEach((component) => {
-      console.log(`  ${chalk.cyan(component)}`);
+      console.log(
+        `  ${chalk.cyan(component)} ${chalk.gray(
+          `(installs as dp-${component})`
+        )}`
+      );
     });
 
     console.log(
       `\nRun ${chalk.cyan(
         "npx deepdanci add <component>"
       )} to add a component to your project.`
+    );
+
+    console.log(
+      `${chalk.blue(
+        "Note:"
+      )} All components will be installed with a ${chalk.cyan(
+        "dp-"
+      )} prefix in your file system.`
     );
   } catch (error) {
     spinner.fail(`Failed to list components: ${(error as Error).message}`);

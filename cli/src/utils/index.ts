@@ -66,11 +66,16 @@ const COMPONENTS_DIR = getComponentsDir();
 export async function validateComponent(
   componentName: string
 ): Promise<boolean> {
+  // 标准化组件名称 - 确保查找带 dp- 前缀的目录
   const normalizedName = componentName.toLowerCase();
-  const componentDir = path.join(COMPONENTS_DIR, normalizedName);
+  const prefixedName = normalizedName.startsWith("dp-")
+    ? normalizedName
+    : `dp-${normalizedName}`;
+
+  const componentDir = path.join(COMPONENTS_DIR, prefixedName);
   const exists = await fs.pathExists(componentDir);
   console.log(
-    `Checking if component ${normalizedName} exists at ${componentDir}: ${exists}`
+    `Checking if component ${prefixedName} exists at ${componentDir}: ${exists}`
   );
   return exists;
 }
@@ -79,8 +84,13 @@ export async function validateComponent(
  * Get the path to a component directory
  */
 export async function getComponentDir(componentName: string): Promise<string> {
+  // 标准化组件名称 - 确保获取带 dp- 前缀的目录
   const normalizedName = componentName.toLowerCase();
-  return path.join(COMPONENTS_DIR, normalizedName);
+  const prefixedName = normalizedName.startsWith("dp-")
+    ? normalizedName
+    : `dp-${normalizedName}`;
+
+  return path.join(COMPONENTS_DIR, prefixedName);
 }
 
 /**
@@ -128,6 +138,11 @@ export async function getAllComponents(): Promise<string[]> {
 
     const components = [];
     for (const dir of componentDirs) {
+      // 只处理带有 dp- 前缀的目录
+      if (!dir.startsWith("dp-")) {
+        continue;
+      }
+
       const fullPath = path.join(COMPONENTS_DIR, dir);
       const stat = await fs.stat(fullPath);
       console.log(
@@ -136,7 +151,9 @@ export async function getAllComponents(): Promise<string[]> {
         }`
       );
       if (stat.isDirectory()) {
-        components.push(dir);
+        // 从组件名移除 dp- 前缀以方便显示
+        const displayName = dir.replace(/^dp-/, "");
+        components.push(displayName);
       }
     }
 

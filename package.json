@@ -1,6 +1,6 @@
 {
   "name": "deepdanci-ui-monorepo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "workspaces": [
     "cli"
@@ -20,10 +20,12 @@
   "license": "MIT",
   "dependencies": {},
   "devDependencies": {
-    "@types/react": "^18.2.0",
-    "class-variance-authority": "^0.6.0",
-    "clsx": "^1.2.1",
-    "react": "^18.2.0",
-    "tailwind-merge": "^1.12.0"
+    "@types/react": "^19.0.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "react": "^19.0.0",
+    "tailwind-merge": "^3.2.0",
+    "tailwindcss-animate": "^1.0.7",
+    "tw-animate-css": "^1.2.8"
   }
 }
